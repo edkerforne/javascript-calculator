@@ -8,7 +8,7 @@ $primary-dark: #382c54;
 $secondary: #98c1d9;
 $secondary-dark: #5b7083;
 
-$spacing: 0.3rem;
+$spacing: 1vh;
 
 body {
   font: 1rem "Lato", sans-serif;
@@ -44,20 +44,24 @@ a {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
 }
 
 #formula,
 #display {
   text-align: right;
-  padding: 0 1rem 0 0;
+  padding: 0 0.5rem;
 }
 
 #display {
   background-color: $dark;
   border: 0;
   color: $light;
-  font-size: 4rem;
+  font-size: 10vw;
+
+  @media only screen and (min-width: 600px) {
+    font-size: 64px;
+  }
 }
 
 #formula {
