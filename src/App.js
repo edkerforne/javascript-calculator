@@ -1,9 +1,14 @@
 import React from "react";
 import "./App.scss";
 
-const Formula = () => {
-  return <p id="formula">0 + 0=</p>;
-};
+const endsWithOperator = /[+\-×÷]$/;
+const isAnOperator = /[+\-×÷]/;
+
+class Formula extends React.Component {
+  render() {
+    return <p id="formula">{this.props.formula}</p>;
+  }
+}
 
 class Display extends React.Component {
   render() {
@@ -20,33 +25,38 @@ class Display extends React.Component {
   }
 }
 
-const Special = () => {
-  return (
-    <div id="special" className="input-group">
-      <input
-        type="button"
-        value="C"
-        name="clear"
-        id="clear"
-        className="key"
-      ></input>
-      <input
-        type="button"
-        value="+/-"
-        name="inverse"
-        id="inverse"
-        className="key"
-      ></input>
-      <input
-        type="button"
-        value="%"
-        name="percent"
-        id="percent"
-        className="key"
-      ></input>
-    </div>
-  );
-};
+class Special extends React.Component {
+  render() {
+    return (
+      <div id="special" className="input-group">
+        <input
+          type="button"
+          value="C"
+          name="clear"
+          id="clear"
+          className="key"
+          onClick={this.props.clear}
+        ></input>
+        <input
+          type="button"
+          value="+/-"
+          name="inverse"
+          id="inverse"
+          className="key"
+          onClick={this.props.inverse}
+        ></input>
+        <input
+          type="button"
+          value="%"
+          name="percent"
+          id="percent"
+          className="key"
+          onClick={this.props.percent}
+        ></input>
+      </div>
+    );
+  }
+}
 
 class Numbers extends React.Component {
   render() {
@@ -147,42 +157,53 @@ class Numbers extends React.Component {
     );
   }
 }
-
-const Operators = () => {
-  return (
-    <div id="operators" className="input-group">
-      <input
-        type="button"
-        value="÷"
-        name="divide"
-        id="divide"
-        className="key"
-      ></input>
-      <input
-        type="button"
-        value="×"
-        name="multiply"
-        id="multiply"
-        className="key"
-      ></input>
-      <input
-        type="button"
-        value="-"
-        name="substract"
-        id="substract"
-        className="key"
-      ></input>
-      <input
-        type="button"
-        value="+"
-        name="add"
-        id="add"
-        className="key"
-      ></input>
-      <input type="submit" value="=" id="equals" className="key"></input>
-    </div>
-  );
-};
+class Operators extends React.Component {
+  render() {
+    return (
+      <div id="operators" className="input-group">
+        <input
+          type="button"
+          value="÷"
+          name="divide"
+          id="divide"
+          className="key"
+          onClick={this.props.operator}
+        ></input>
+        <input
+          type="button"
+          value="×"
+          name="multiply"
+          id="multiply"
+          className="key"
+          onClick={this.props.operator}
+        ></input>
+        <input
+          type="button"
+          value="-"
+          name="substract"
+          id="substract"
+          className="key"
+          onClick={this.props.operator}
+        ></input>
+        <input
+          type="button"
+          value="+"
+          name="add"
+          id="add"
+          className="key"
+          onClick={this.props.operator}
+        ></input>
+        <input
+          type="submit"
+          value="="
+          id="equals"
+          className="key"
+          onClick={this.props.equals}
+        ></input>
+      </div>
+    );
+  }
+}
 
 class Calculator extends React.Component {
   constructor(props) {
@@ -190,29 +211,39 @@ class Calculator extends React.Component {
     this.state = {
       currentValue: "0",
       formula: "",
-      operatorWasPressed: false
+      lastInput: "0"
     };
     this.handleNumber = this.handleNumber.bind(this);
     this.handleDecimal = this.handleDecimal.bind(this);
+    this.handleOperator = this.handleOperator.bind(this);
+    this.handleEvaluation = this.handleEvaluation.bind(this);
+    this.handleClear = this.handleClear.bind(this);
+    this.handleInverse = this.handleInverse.bind(this);
+    this.handlePercent = this.handlePercent.bind(this);
   }
 
   handleNumber(e) {
-    const currentValue = this.state.currentValue;
+    const { currentValue, formula, lastInput } = this.state;
     const inputValue = e.target.value;
     let newValue = "";
 
-    if (currentValue === "0") {
-      if (inputValue === "0") {
-        newValue = "0";
-      } else {
-        newValue = inputValue;
-      }
+    if (endsWithOperator.test(formula) && !/[0-9]|\./.test(lastInput)) {
+      newValue = inputValue;
     } else {
-      newValue = currentValue + inputValue;
+      if (currentValue === "0") {
+        if (inputValue === "0") {
+          newValue = "0";
+        } else {
+          newValue = inputValue;
+        }
+      } else {
+        newValue = currentValue + inputValue;
+      }
     }
 
     this.setState({
-      currentValue: newValue
+      currentValue: newValue,
+      lastInput: inputValue
     });
   }
 
@@ -220,23 +251,84 @@ class Calculator extends React.Component {
     const currentValue = this.state.currentValue;
     const inputValue = e.target.value;
 
-    // only add period if there isn't one already
+    // only add decimal if no period is found
     if (!/\./.test(currentValue)) {
       this.setState({
-        currentValue: currentValue + inputValue
+        currentValue: currentValue + inputValue,
+        lastInput: inputValue
       });
     }
+  }
+
+  handleOperator(e) {
+    let { currentValue, formula, lastInput } = this.state;
+    const inputValue = e.target.value;
+
+    // if an operator is pressed and there is no value
+    // after the decimal, remove the period
+    currentValue.replace(/\.$/, ""); /* TODO */
+
+    if (!isAnOperator.test(lastInput)) {
+      if (endsWithOperator.test(formula)) {
+        formula += currentValue + inputValue;
+      } else {
+        formula = currentValue + inputValue;
+      }
+    } else {
+      formula = formula.substring(0, formula.length - 1) + inputValue;
+    }
+
+    this.setState({
+      currentValue: currentValue,
+      formula: formula,
+      lastInput: inputValue
+    });
+  }
+
+  handleEvaluation(e) {
+    e.preventDefault();
+
+    const formula = this.state.formula;
+
+    /* TODO: Update the current formula with an =
+     * only AFTER evaluating it
+     */
+
+    this.setState({ currentValue: eval(formula) });
+  }
+
+  handleClear(e) {
+    this.setState({
+      currentValue: "0",
+      formula: "",
+      lastInput: "0"
+    });
+  }
+
+  handleInverse() {
+    /* TODO */
+  }
+
+  handlePercent() {
+    /* TODO */
   }
 
   render() {
     return (
       <form id="calculator">
-        <Formula />
+        <Formula formula={this.state.formula} />
         <Display value={this.state.currentValue} />
         <div id="inputs">
-          <Special />
+          <Special
+            clear={this.handleClear}
+            inverse={this.handleInverse}
+            percent={this.handlePercent}
+          />
           <Numbers number={this.handleNumber} decimal={this.handleDecimal} />
-          <Operators />
+          <Operators
+            operator={this.handleOperator}
+            equals={this.handleEvaluation}
+          />
         </div>
       </form>
     );
