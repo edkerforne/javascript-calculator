@@ -211,7 +211,8 @@ class Calculator extends React.Component {
     this.state = {
       currentValue: "0",
       formula: "",
-      lastInput: "0"
+      lastInput: "0",
+      lastOperator: ""
     };
     this.handleNumber = this.handleNumber.bind(this);
     this.handleDecimal = this.handleDecimal.bind(this);
@@ -269,7 +270,7 @@ class Calculator extends React.Component {
 
     const { currentValue, formula, lastInput } = this.state;
     const inputValue = e.target.value;
-    let newValue = currentValue.substring(0, 16);
+    let newValue = currentValue;
     let newFormula = "";
 
     // if an operator is pressed and there is no value
@@ -282,41 +283,54 @@ class Calculator extends React.Component {
       // if two operators were pressed in a row,
       // replace previous operator with the new
       newFormula = formula.substring(0, formula.length - 1) + inputValue;
-    } else if (lastInput === "%") {
-      newFormula = formula;
     } else {
       if (endsWithOperator.test(formula)) {
         newFormula = formula + newValue + inputValue;
+      } else if (lastInput === "%") {
+        newFormula = formula + inputValue;
       } else {
         newFormula = newValue + inputValue;
       }
     }
 
+    console.log(newFormula); // DEBUG
+
     this.setState({
-      currentValue: this.handleEvaluation(newFormula).substring(0, 16),
+      currentValue: this.handleEvaluation(newFormula),
       formula: newFormula,
-      lastInput: inputValue
+      lastInput: inputValue,
+      lastOperator: inputValue
     });
   }
 
   handleEvaluation(string) {
-    let formula = string;
+    let result = "";
 
     // remove last operator (you cannot eval otheriwse)
     // and replace multiply and divide signs
-    formula = formula
-      .substring(0, formula.length - 1)
+    string = string
+      .substring(0, string.length - 1)
       .replace("×", "*")
       .replace("÷", "/");
 
-    return formula === "0" ? "0" : eval(formula).toString();
+    // result has to be cast back into a string so any
+    // future formula can be calculated properly,
+    // then shortened to 16 characters and trailing 0s
+    // removed
+    result = eval(string)
+      .toString()
+      .substring(0, 16)
+      .replace(/\.0+$/, "");
+
+    return result === "0" ? "0" : result;
   }
 
   handleClear(e) {
     this.setState({
       currentValue: "0",
       formula: "",
-      lastInput: "0"
+      lastInput: "0",
+      lastOperator: ""
     });
   }
 
@@ -327,17 +341,22 @@ class Calculator extends React.Component {
   }
 
   handlePercent() {
-    const { currentValue, formula } = this.state;
+    const { currentValue, formula, lastOperator } = this.state;
+    let percentage;
 
-    // if formula is empty, percentage is 0
-    let percentage =
-      formula === "" || formula === "0"
-        ? "0"
-        : (this.handleEvaluation(formula) / 100) * currentValue;
-    percentage = percentage;
+    if (formula === "" || formula === "0") {
+      // empty formula = zero, so percentage is 0
+      percentage = "0";
+    } else {
+      if (lastOperator === "+" || lastOperator === "-") {
+        percentage = (this.handleEvaluation(formula) / 100) * currentValue;
+      } else {
+        percentage = this.handleEvaluation(formula) / 1000;
+      }
+    }
 
-    // currentValue and formula should be zero when trying
-    // to calculate a percentage of zero
+    // when trying to calculate a percentage of zero,
+    // the display value is also zero and the formula is unchanged
     this.setState({
       currentValue:
         currentValue === "0" ? "0" : percentage.toString().substring(0, 16),
