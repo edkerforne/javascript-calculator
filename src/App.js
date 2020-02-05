@@ -198,7 +198,7 @@ class Operators extends React.Component {
           value="="
           id="equals"
           className="key"
-          onClick={this.props.equals}
+          onClick={this.props.operator}
         ></input>
       </div>
     );
@@ -228,9 +228,11 @@ class Calculator extends React.Component {
     let newValue = "";
 
     if (endsWithOperator.test(formula) && !/[0-9]|\./.test(lastInput)) {
+      // after an operator was pressed, replace old (current) value
+      // with new one
       newValue = inputValue;
     } else {
-      if (currentValue === "0") {
+      if (currentValue === "0" || lastInput === "=") {
         if (inputValue === "0") {
           newValue = "0";
         } else {
@@ -240,6 +242,8 @@ class Calculator extends React.Component {
         newValue = currentValue + inputValue;
       }
     }
+
+    newValue = newValue.substring(0, 16);
 
     this.setState({
       currentValue: newValue,
@@ -254,47 +258,58 @@ class Calculator extends React.Component {
     // only add decimal if no period is found
     if (!/\./.test(currentValue)) {
       this.setState({
-        currentValue: currentValue + inputValue,
+        currentValue: (currentValue + inputValue).substring(0, 16),
         lastInput: inputValue
       });
     }
   }
 
   handleOperator(e) {
-    let { currentValue, formula, lastInput } = this.state;
+    e.preventDefault();
+
+    const { currentValue, formula, lastInput } = this.state;
     const inputValue = e.target.value;
+    let newValue = currentValue.substring(0, 16);
+    let newFormula = "";
 
     // if an operator is pressed and there is no value
-    // after the decimal, remove the period
-    currentValue.replace(/\.$/, ""); /* TODO */
+    // after the period, remove that unnecessary period
+    if (/\.$/.test(currentValue)) {
+      newValue = currentValue.substring(0, currentValue.length - 1);
+    }
 
-    if (!isAnOperator.test(lastInput)) {
-      if (endsWithOperator.test(formula)) {
-        formula += currentValue + inputValue;
-      } else {
-        formula = currentValue + inputValue;
-      }
+    if (isAnOperator.test(lastInput)) {
+      // if two operators were pressed in a row,
+      // replace previous operator with the new
+      newFormula = formula.substring(0, formula.length - 1) + inputValue;
+    } else if (lastInput === "%") {
+      newFormula = formula;
     } else {
-      formula = formula.substring(0, formula.length - 1) + inputValue;
+      if (endsWithOperator.test(formula)) {
+        newFormula = formula + newValue + inputValue;
+      } else {
+        newFormula = newValue + inputValue;
+      }
     }
 
     this.setState({
-      currentValue: currentValue,
-      formula: formula,
+      currentValue: this.handleEvaluation(newFormula).substring(0, 16),
+      formula: newFormula,
       lastInput: inputValue
     });
   }
 
-  handleEvaluation(e) {
-    e.preventDefault();
+  handleEvaluation(string) {
+    let formula = string;
 
-    const formula = this.state.formula;
+    // remove last operator (you cannot eval otheriwse)
+    // and replace multiply and divide signs
+    formula = formula
+      .substring(0, formula.length - 1)
+      .replace("×", "*")
+      .replace("÷", "/");
 
-    /* TODO: Update the current formula with an =
-     * only AFTER evaluating it
-     */
-
-    this.setState({ currentValue: eval(formula) });
+    return formula === "0" ? "0" : eval(formula).toString();
   }
 
   handleClear(e) {
@@ -306,11 +321,29 @@ class Calculator extends React.Component {
   }
 
   handleInverse() {
-    /* TODO */
+    const currentValue = this.state.currentValue;
+
+    this.setState({ currentValue: eval(-currentValue).toString() });
   }
 
   handlePercent() {
-    /* TODO */
+    const { currentValue, formula } = this.state;
+
+    // if formula is empty, percentage is 0
+    let percentage =
+      formula === "" || formula === "0"
+        ? "0"
+        : (this.handleEvaluation(formula) / 100) * currentValue;
+    percentage = percentage;
+
+    // currentValue and formula should be zero when trying
+    // to calculate a percentage of zero
+    this.setState({
+      currentValue:
+        currentValue === "0" ? "0" : percentage.toString().substring(0, 16),
+      formula: currentValue === "0" ? formula : formula + percentage,
+      lastInput: "%"
+    });
   }
 
   render() {
